@@ -1,0 +1,18 @@
+[package]
+name = "sentinel-tray"
+version = "0.1.0"
+edition = "2021"
+description = "Resource Sentinel tray companion — governor, LAN HTTP supervise, peer status"
+license = "MIT"
+authors = ["Stephen Phillips", "HappyMonkeyAI"]
+repository = "https://github.com/SPhillips1337/sentinel-tray"
+readme = "README.md"
+
+[dependencies]
+anyhow = "1"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tray-icon = "0.19"
+winit = "0.30"
+open = "5"

@@ -1,0 +1,27 @@
+{
+  "id": "host-example",
+  "name": "Example Windows peer",
+  "description": "Example agent card for a Windows Resource Sentinel peer. Replace host_id, endpoints, and auth for your LAN.",
+  "endpoint": "mcp://agent-communication/host-example",
+  "host_id": "example-host",
+  "auth": {"scheme": "bearer", "token_env": "AGENT_COMM_DEV_TOKEN"},
+  "capabilities": [
+    "placement-peer",
+    "mailbox-tasks",
+    "windows-host"
+  ],
+  "endpoints": {
+    "resource_sentinel": "http://192.168.1.20:8800",
+    "agent_communication": "mcp://agent-communication"
+  },
+  "gates": {
+    "heavy_work": "Call Resource Sentinel recommend_execution_host then request_execution_slot on the chosen host before heavy fan-out."
+  },
+  "tool_belt": {
+    "mode": "dynamic_proxy_summary",
+    "server_roles": [
+      "resource_sentinel:admission",
+      "agent_communication:mailbox-tasks"
+    ]
+  }
+}
