@@ -8,9 +8,27 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+/// Hide the console for helper PowerShell scripts (governor / start Sentinel).
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+fn hidden_powershell() -> Command {
+    let mut cmd = Command::new("powershell");
+    #[cfg(windows)]
+    {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    cmd
+}
 use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{Icon, TrayIconBuilder};
 use winit::application::ApplicationHandler;
@@ -124,9 +142,11 @@ fn refresh_status() -> String {
 
 fn run_governor() -> Result<()> {
     let script = install_root().join("hm-memory-governor.ps1");
-    Command::new("powershell")
+    hidden_powershell()
         .args([
             "-NoProfile",
+            "-WindowStyle",
+            "Hidden",
             "-ExecutionPolicy",
             "Bypass",
             "-File",
@@ -140,9 +160,11 @@ fn run_governor() -> Result<()> {
 
 fn start_sentinel() -> Result<()> {
     let script = install_root().join("start-sentinel-http.ps1");
-    Command::new("powershell")
+    hidden_powershell()
         .args([
             "-NoProfile",
+            "-WindowStyle",
+            "Hidden",
             "-ExecutionPolicy",
             "Bypass",
             "-File",

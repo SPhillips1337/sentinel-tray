@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Install memory governor + Resource Sentinel HTTP for a Windows HappyMonkey host.
@@ -46,13 +46,13 @@ vmIdleTimeout=-1
 Set-Content -Path $wslPath -Value $wslBody -Encoding ascii
 Write-Output "wrote $wslPath (cap applies after wsl --shutdown)"
 
-# Scheduled tasks
-$govCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$InstallRoot\hm-memory-governor.ps1`" -PruneBuilder"
-$sentCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$InstallRoot\start-sentinel-http.ps1`" -HostId $HostId -Peers `"$Peers`""
+# Scheduled tasks — run powershell.exe directly (no cmd.exe flash) and keep Hidden.
+$govArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$InstallRoot\hm-memory-governor.ps1`" -PruneBuilder"
+$sentArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$InstallRoot\start-sentinel-http.ps1`" -HostId $HostId -Peers `"$Peers`""
 
-function Register-HmTask([string]$Name, [string]$Command, [bool]$AtLogon, [int]$Minutes = 0) {
+function Register-HmTask([string]$Name, [string]$Argument, [bool]$AtLogon, [int]$Minutes = 0) {
   Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
-  $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c $Command"
+  $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $Argument
   if ($AtLogon) {
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
   } else {
@@ -60,15 +60,16 @@ function Register-HmTask([string]$Name, [string]$Command, [bool]$AtLogon, [int]$
       -RepetitionInterval (New-TimeSpan -Minutes $Minutes) `
       -RepetitionDuration (New-TimeSpan -Days 3650)
   }
-  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew
+  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable -MultipleInstances IgnoreNew -Hidden
   $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
   Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
-    -Description "HappyMonkey $Name" | Out-Null
-  Write-Output "registered task $Name"
+    -Description "HappyMonkey $Name (hidden)" | Out-Null
+  Write-Output "registered task $Name (hidden)"
 }
 
-Register-HmTask 'HappyMonkey-MemoryGovernor' $govCmd $false 15
-Register-HmTask 'HappyMonkey-SentinelHTTP' $sentCmd $true 0
+Register-HmTask 'HappyMonkey-MemoryGovernor' $govArgs $false 15
+Register-HmTask 'HappyMonkey-SentinelHTTP' $sentArgs $true 0
 
 # Start Sentinel now
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallRoot 'start-sentinel-http.ps1') -HostId $HostId -Peers $Peers
